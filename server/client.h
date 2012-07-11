@@ -16,25 +16,28 @@ enum ClientStatus
 
 class Server;
 
-class Client: public QObject
+class Client : public QObject
 {
     Q_OBJECT
 public:
-    Client(QTcpSocket *socket, QObject *parent=0);
-    void send(const QByteArray &cmd) const;
-    void send(const QString &cmd) const;
+    Client( QTcpSocket* socket, QObject* parent = 0 );
+    void send( const QByteArray& cmd ) const;
+    void send( const QString& cmd ) const;
     qint32 getId() const;
     QString getIdHash() const;
     ClientStatus getStatus() const;
+
 private slots:
     void onDataReceived();
+
 private:
-    void parseData(const QByteArray& data);
-    bool parseClientAuth(const QByteArray& data);
-    bool parseAdminAuth(const QByteArray& data);
-    bool parseList(const QByteArray& data);
-    bool parseTransmit(const QByteArray& data);
-    Server *getServer();
+    void parseData( const QByteArray& data );
+    bool parseClientAuth( const QByteArray& data );
+    bool parseAdminAuth( const QByteArray& data );
+    bool parseList( const QByteArray& data );
+    bool parseTransmit( const QByteArray& data );
+    Server* getServer();
+
 private:
     ClientStatus status_;
     QTcpSocket* socket_;

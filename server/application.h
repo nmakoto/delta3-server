@@ -2,14 +2,15 @@
 #include <QCoreApplication>
 #include "server.h"
 
-class Application: public QCoreApplication
+class Application : public QCoreApplication
 {
     Q_OBJECT
 public:
     Application( int& argc, char* argv[] );
-    ~Application ();
+    ~Application();
     bool init();
     bool startServer();
+
 private:
-    Server *server_;
+    Server* server_;
 };

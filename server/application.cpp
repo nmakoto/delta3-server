@@ -2,7 +2,7 @@
 
 Application::Application( int& argc, char* argv[] ):
     QCoreApplication( argc, argv ),
-    server_(new Server(this))
+    server_( new Server(this) )
 {
 }
 
@@ -12,7 +12,9 @@ Application::~Application()
 
 bool Application::init()
 {
-    if (!startServer()) return false;
+    if( !startServer() )
+        return false;
+
     return true;
 }
 
