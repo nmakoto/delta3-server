@@ -1,3 +1,6 @@
+// server.h
+// Delta3 project -- Universal remote control system
+
 #pragma once
 
 #include <QObject>
@@ -8,6 +11,7 @@
 
 typedef QMap<qint32, Client*> Clients;
 
+//------------------------------------------------------------------------------
 class Server : public QObject
 {
     Q_OBJECT
@@ -26,3 +30,4 @@ private:
     QTcpServer* tcpServer_;
     Clients clients_;
 };
+//------------------------------------------------------------------------------

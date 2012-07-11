@@ -1,5 +1,9 @@
+// main.cpp
+// Delta3 project -- Universal remote control system
+
 #include "application.h"
 
+//------------------------------------------------------------------------------
 int main( int argc, char* argv[] )
 {
     Application app( argc, argv );
@@ -9,3 +13,4 @@ int main( int argc, char* argv[] )
 
     return app.exec();
 }
+//------------------------------------------------------------------------------

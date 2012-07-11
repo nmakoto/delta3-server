@@ -1,4 +1,8 @@
+// client.h
+// Delta3 project -- Universal remote control system
+
 #pragma once
+
 #include <QtNetwork/QTcpSocket>
 #include <QString>
 #include <QByteArray>
@@ -6,19 +10,21 @@
 #include <QDebug>
 #include <QRegExp>
 
-enum ClientStatus
-{
-    ST_DISCONNECTED,
-    ST_CONNECTED,
-    ST_CLIENT,
-    ST_ADMIN
-};
-
+//------------------------------------------------------------------------------
 class Server;
-
+//------------------------------------------------------------------------------
 class Client : public QObject
 {
     Q_OBJECT
+public:
+    enum ClientStatus
+    {
+        ST_DISCONNECTED,
+        ST_CONNECTED,
+        ST_CLIENT,
+        ST_ADMIN
+    };
+
 public:
     Client( QTcpSocket* socket, QObject* parent = 0 );
     void send( const QByteArray& cmd ) const;
@@ -43,3 +49,4 @@ private:
     QTcpSocket* socket_;
     QString clientIdHash_;
 };
+//------------------------------------------------------------------------------

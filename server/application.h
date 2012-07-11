@@ -1,7 +1,12 @@
+// application.h
+// Delta3 project -- Universal remote control system
+
 #pragma once
+
 #include <QCoreApplication>
 #include "server.h"
 
+//------------------------------------------------------------------------------
 class Application : public QCoreApplication
 {
     Q_OBJECT
@@ -14,3 +19,4 @@ public:
 private:
     Server* server_;
 };
+//------------------------------------------------------------------------------

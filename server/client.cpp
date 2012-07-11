@@ -1,6 +1,10 @@
+// client.cpp
+// Delta3 project -- Universal remote control system
+
 #include "client.h"
 #include "server.h"
 
+//------------------------------------------------------------------------------
 Client::Client( QTcpSocket* socket, QObject* parent ):
     QObject( parent ),
     socket_( socket )
@@ -13,39 +17,39 @@ Client::Client( QTcpSocket* socket, QObject* parent ):
     );
     status_ = ST_CONNECTED;
 }
-
+//------------------------------------------------------------------------------
 void Client::send( const QByteArray& cmd ) const
 {
     socket_->write( cmd );
 }
-
+//------------------------------------------------------------------------------
 void Client::send( const QString& cmd ) const
 {
     socket_->write( cmd.toLocal8Bit() );
 }
-
+//------------------------------------------------------------------------------
 void Client::onDataReceived()
 {
     QByteArray data = socket_->readAll();
     qDebug() << "onDataReceived():" << data;
     parseData( data );
 }
-
+//------------------------------------------------------------------------------
 qint32 Client::getId() const
 {
     return socket_->socketDescriptor();
 }
-
+//------------------------------------------------------------------------------
 QString Client::getIdHash() const
 {
     return clientIdHash_;
 }
-
-ClientStatus Client::getStatus() const
+//------------------------------------------------------------------------------
+Client::ClientStatus Client::getStatus() const
 {
     return status_;
 }
-
+//------------------------------------------------------------------------------
 void Client::parseData( const QByteArray& data )
 {
     parseClientAuth( data );
@@ -53,7 +57,7 @@ void Client::parseData( const QByteArray& data )
     parseList( data );
     parseTransmit( data );
 }
-
+//------------------------------------------------------------------------------
 bool Client::parseClientAuth( const QByteArray& data )
 {
     if( this->status_ != ST_CONNECTED )
@@ -77,7 +81,7 @@ bool Client::parseClientAuth( const QByteArray& data )
 
     return true;
 }
-
+//------------------------------------------------------------------------------
 bool Client::parseAdminAuth( const QByteArray& data )
 {
     if( this->status_ != ST_CONNECTED )
@@ -105,8 +109,7 @@ bool Client::parseAdminAuth( const QByteArray& data )
 
     return true;
 }
-
-
+//------------------------------------------------------------------------------
 bool Client::parseList( const QByteArray& data )
 {
     if( this->status_ != ST_ADMIN )
@@ -127,7 +130,7 @@ bool Client::parseList( const QByteArray& data )
 
     return true;
 }
-
+//------------------------------------------------------------------------------
 bool Client::parseTransmit( const QByteArray& data )
 {
     if(
@@ -168,8 +171,9 @@ bool Client::parseTransmit( const QByteArray& data )
 
     return true;
 }
-
+//------------------------------------------------------------------------------
 Server* Client::getServer()
 {
     return static_cast<Server*>( parent() );
 }
+//------------------------------------------------------------------------------
