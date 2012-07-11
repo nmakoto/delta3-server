@@ -30,7 +30,7 @@ void Client::send( const QString& cmd ) const
 //------------------------------------------------------------------------------
 void Client::onDataReceived()
 {
-    QByteArray data = socket_->readAll();
+    QString data = QString::fromLocal8Bit( socket_->readAll() );
     qDebug() << "onDataReceived():" << data;
     parseData( data );
 }
@@ -50,7 +50,7 @@ Client::ClientStatus Client::getStatus() const
     return status_;
 }
 //------------------------------------------------------------------------------
-void Client::parseData( const QByteArray& data )
+void Client::parseData( const QString& data )
 {
     parseClientAuth( data );
     parseAdminAuth( data );
@@ -58,7 +58,7 @@ void Client::parseData( const QByteArray& data )
     parseTransmit( data );
 }
 //------------------------------------------------------------------------------
-bool Client::parseClientAuth( const QByteArray& data )
+bool Client::parseClientAuth( const QString& data )
 {
     if( this->status_ != ST_CONNECTED )
         return false;
@@ -82,7 +82,7 @@ bool Client::parseClientAuth( const QByteArray& data )
     return true;
 }
 //------------------------------------------------------------------------------
-bool Client::parseAdminAuth( const QByteArray& data )
+bool Client::parseAdminAuth( const QString& data )
 {
     if( this->status_ != ST_CONNECTED )
         return false;
@@ -110,7 +110,7 @@ bool Client::parseAdminAuth( const QByteArray& data )
     return true;
 }
 //------------------------------------------------------------------------------
-bool Client::parseList( const QByteArray& data )
+bool Client::parseList( const QString& data )
 {
     if( this->status_ != ST_ADMIN )
         return false;
@@ -131,7 +131,7 @@ bool Client::parseList( const QByteArray& data )
     return true;
 }
 //------------------------------------------------------------------------------
-bool Client::parseTransmit( const QByteArray& data )
+bool Client::parseTransmit( const QString& data )
 {
     if(
         !(this->status_ == ST_ADMIN ||
