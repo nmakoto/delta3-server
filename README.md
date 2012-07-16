@@ -1,4 +1,4 @@
-﻿Delta3 server
+Delta3 server
 ========
 Universal remote control system
 Серверная часть

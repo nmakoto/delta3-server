@@ -2,12 +2,31 @@
 // Delta3 project -- Universal remote control system
 
 #include "client.h"
-#include "server.h"
 
+#include "netextract.h"
+#include "defines.h"
+#include "server.h"
+#include "utils.h"
+
+using namespace delta3;
+
+//------------------------------------------------------------------------------
+const Client::CommandTableType Client::CommandTable[] =
+{
+    { CMD1_ADM, &Client::parseAdminAuth },
+    { CMD1_AUTH, &Client::parseClientAuth },
+    { CMD1_LIST, &Client::parseList },
+    { CMD1_TRANSMIT, &Client::parseTransmit },
+    { CMD1_PING, &Client::parsePing },
+    { CMD1_DISCONNECT, &Client::parseDisconnect },
+    { CMD1_SETINFO, &Client::parseSetInfo },
+};
 //------------------------------------------------------------------------------
 Client::Client( QTcpSocket* socket, QObject* parent ):
     QObject( parent ),
-    socket_( socket )
+    socket_( socket ),
+    clientInfo_(),
+    status_( ST_CONNECTED )
 {
     connect(
         socket_,
@@ -15,7 +34,6 @@ Client::Client( QTcpSocket* socket, QObject* parent ):
         this,
         SLOT(onDataReceived())
     );
-    status_ = ST_CONNECTED;
 }
 //------------------------------------------------------------------------------
 void Client::send( const QByteArray& cmd ) const
@@ -23,157 +41,318 @@ void Client::send( const QByteArray& cmd ) const
     socket_->write( cmd );
 }
 //------------------------------------------------------------------------------
-void Client::send( const QString& cmd ) const
+void Client::ping() const
 {
-    socket_->write( cmd.toLocal8Bit() );
+    QByteArray cmd;
+    cmd.append( CSPYP1_PROTOCOL_ID );
+    cmd.append( CSPYP1_PROTOCOL_VERSION );
+    cmd.append( CMD1_PING );
+    this->send( cmd );
 }
 //------------------------------------------------------------------------------
 void Client::onDataReceived()
 {
-    QString data = QString::fromLocal8Bit( socket_->readAll() );
-    qDebug() << "onDataReceived():" << data;
-    parseData( data );
+    qDebug() << "onDataReceived():";
+    buf_ += socket_->readAll();
+    setSeen();
+
+    if( buf_.size() < 3 )
+        return; // if we don't read header
+
+    if(
+        getProtoId(buf_) != CSPYP1_PROTOCOL_ID ||
+        getProtoVersion(buf_) != CSPYP1_PROTOCOL_VERSION
+    )
+    {
+        // wrong packet - disconnecting client
+        qDebug() << "PROTOCOL ERROR!";
+        disconnectFromHost();
+        return;
+    }
+
+    const Cspyp1Command command = getCommand( buf_ );
+
+    for(
+        quint32 i = 0;
+        i < sizeof( CommandTable ) / sizeof( *CommandTable );
+        ++i
+    )
+    {
+        if( CommandTable[i].command == command )
+        {
+            ( this->*CommandTable[i].function )();
+            return;
+        }
+    }
+
+    qDebug() << "PROTOCOL ERROR!";
+    disconnectFromHost();
 }
 //------------------------------------------------------------------------------
-qint32 Client::getId() const
+qint16 Client::getId() const
 {
     return socket_->socketDescriptor();
 }
 //------------------------------------------------------------------------------
-QString Client::getIdHash() const
+QByteArray Client::getIdHash() const
 {
-    return clientIdHash_;
+    return getClientInfo()->hash;
 }
 //------------------------------------------------------------------------------
-Client::ClientStatus Client::getStatus() const
+QString Client::getOs() const
+{
+    return getClientInfo()->os;
+}
+//------------------------------------------------------------------------------
+QString Client::getDevice() const
+{
+    return getClientInfo()->deviceType;
+}
+//------------------------------------------------------------------------------
+QString Client::getCaption() const
+{
+    return getClientInfo()->caption;
+}
+//------------------------------------------------------------------------------
+ClientStatus Client::getStatus() const
 {
     return status_;
 }
 //------------------------------------------------------------------------------
-void Client::parseData( const QString& data )
+void Client::parseClientAuth()
 {
-    parseClientAuth( data );
-    parseAdminAuth( data );
-    parseList( data );
-    parseTransmit( data );
-}
-//------------------------------------------------------------------------------
-bool Client::parseClientAuth( const QString& data )
-{
+    qDebug() << "parseClientAuth():";
+
     if( this->status_ != ST_CONNECTED )
-        return false;
+    {
+        qDebug() << "cmd not allowed";
+        this->disconnectFromHost();
+        return;
+    }
 
-    QRegExp re( "cspycli:(\\d+):(\\w+):" );
+    qDebug() << buf_.size();
 
-    if( re.indexIn(data) == -1 )
-        return false;
-
-    if(
-        re.cap(1).toInt() != 1 ||
-        re.cap(2).length() != 32
-    )
-        return false;
+    if( buf_.size() < CMD1_AUTH_SIZE )
+        return;     // not all data avaliable
 
     this->status_ = ST_CLIENT;
-    this->clientIdHash_ = re.cap( 2 );
 
-    qDebug() << "parseClientAuth(): new client:" << re.cap( 2 );
+    ClientInfo* clientInfo = new ClientInfo;
+    clientInfo->hash = getClientHash( buf_ );
+    clientInfo->os = getClientOs( buf_ );
+    clientInfo->deviceType = getClientDevice( buf_ );
+    // TODO: implement functions above
+    this->clientInfo_.reset( clientInfo );
 
-    return true;
+    qDebug() << "new client authorized";
+
+    this->getServer()->resendListToAdmins();
+
+    buf_ = buf_.right( buf_.size() - CMD1_AUTH_SIZE );
+
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
 }
 //------------------------------------------------------------------------------
-bool Client::parseAdminAuth( const QString& data )
+void Client::parseAdminAuth()
 {
+    qDebug() << "parseAmdinAuth():";
+
     if( this->status_ != ST_CONNECTED )
-        return false;
+    {
+        qDebug() << "cmd not allowed";
+        this->disconnectFromHost();
+        return;
+    }
 
-    QRegExp re( "cspyadm:(\\d+):(\\w+):(\\w+):" );
-
-    if( re.indexIn(data) == -1 )
-        return false;
+    if( buf_.size() < CMD1_ADM_SIZE )
+        return;     // not all data avaliable
 
     if(
-        re.cap(1).toInt() != 1 ||
-        re.cap(2) != "admin" ||
-        re.cap(3) != "admin"
+        getAdminLogin(buf_) != "admin" ||
+        getAdminPassword(buf_) != "admin"
     )
     {
-        // TODO: check password
-        return false;
+        qDebug() << "auth failed";
+        this->disconnectFromHost();
+        return;
     }
 
     this->status_ = ST_ADMIN;
-    this->clientIdHash_ = re.cap( 2 );
 
-    qDebug() << "parseAdminAuth(): new admin:" << re.cap( 2 );
+    AdminInfo* adminInfo = new AdminInfo;
+    adminInfo->login = getAdminLogin( buf_ );
+    adminInfo->pass = getAdminPassword( buf_ );
+    this->clientInfo_.reset( adminInfo );
 
-    return true;
+    qDebug() << "New admin authorized:";
+
+    buf_ = buf_.right( buf_.size() - CMD1_ADM_SIZE );
+
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
 }
 //------------------------------------------------------------------------------
-bool Client::parseList( const QString& data )
+void Client::parseDisconnect()
 {
-    if( this->status_ != ST_ADMIN )
-        return false;
+    if( buf_.size() < 3 ) // TODO: remove magic number
+        return;     // not all data avaliable
 
-    QRegExp re( "l:" );
+    qDebug() << "parseDisconnect():";
+    this->disconnectFromHost();
 
-    if( re.indexIn(data) == -1 )
-        return false;
+    buf_ = buf_.right( buf_.size() - 3 );
 
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
+}
+//------------------------------------------------------------------------------
+void Client::parsePing()
+{
+    qDebug() << "Ping received!";
+
+    if( buf_.size() < 3 ) // TODO: remove magic number
+        return;     // not all data avaliable
+
+    qDebug() << "Ping parsed!";
+
+    buf_ = buf_.right( buf_.size() - 3 );
+
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
+}
+//------------------------------------------------------------------------------
+void Client::parseSetInfo()
+{
+    qDebug() << "SetInfor received!";
+
+    if( buf_.size() < CMD1_SETINFO_SIZE ) // TODO: remove magic number
+        return;     // not all data avaliable
+
+    // TODO: implement set info
+
+    buf_ = buf_.right( buf_.size() - CMD1_SETINFO_SIZE );
+
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
+}
+//------------------------------------------------------------------------------
+void Client::parseList()
+{
     qDebug() << "parseList():";
 
-    QString response;
-    response = getServer()->listConnectedClients();
+    if( this->status_ != ST_ADMIN )
+    {
+        qDebug() << "cmd not allowed";
+        this->disconnectFromHost();
+        return;
+    }
 
-    response = QString( "l:%1:" ).arg( response );
-    this->send( response );
+    if( buf_.size() < 3 ) // TODO: remove magic number
+        return;     // not all data avaliable
 
-    return true;
+    buf_ = buf_.right( buf_.size() - 3 );
+
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
+
+    this->sendList( getServer()->listConnectedClients() );
 }
 //------------------------------------------------------------------------------
-bool Client::parseTransmit( const QString& data )
+void Client::parseTransmit()
 {
+    qDebug() << "parseTransmit():";
+
     if(
-        !(this->status_ == ST_ADMIN ||
-          this->status_ == ST_CLIENT)
+        this->status_ != ST_ADMIN &&
+        this->status_ != ST_CLIENT
     )
-        return false;
+    {
+        qDebug() << "cmd not allowed";
+        this->disconnectFromHost();
+        return;
+    }
 
-    QRegExp re( "t:(\\d+):(\\d+):(.*)" );
+    if( buf_.size() < 9 ) // TODO: remove magic number
+        return;     // not all data avaliable
 
-    if( re.indexIn(data) == -1 )
-        return false;
+    qDebug() << "buf size" << buf_.size();
+    qDebug() << "packet len" << getPacketLength( buf_ );
 
-    qDebug() << "re worked!";
+    // TODO: remove magic number
+    if( buf_.size() < getPacketLength( buf_ ) + 9 )
+        return; // not all data avaliable
 
-    qint32 packetLen = re.cap( 2 ).toInt();
-    qint32 clientId = re.cap( 1 ).toInt();
-    QByteArray cmd = re.cap( 3 ).toLocal8Bit();
-    cmd = cmd.left( packetLen );
+    qint16 clientId = getClientId( buf_ );
 
-    auto strCmd = QString( "f:%1:%2:" )
-        .arg( getId() )
-        .arg( cmd.size() );
+    QByteArray cmd = getPacketData( buf_ );
 
-    cmd = strCmd.toLocal8Bit() + cmd + ':';
-
-    if( re.cap(3).size() < packetLen )
-        return false;
+    QByteArray response;
+    response.append( CSPYP1_PROTOCOL_ID );
+    response.append( CSPYP1_PROTOCOL_VERSION );
+    response.append( CMD1_TRANSMIT );
+    response.append( toBytes(getId()) );
+    response.append( toBytes(cmd.size()) );
+    response.append( cmd );
 
     auto destClient = getServer()->searchClient( clientId );
+    qDebug() << "Client to ID:" << clientId;
 
-    if( destClient == getServer()->clientEnd() )
-        return false;
+    if( destClient != getServer()->clientEnd() )
+    {
+        qDebug() << "transmiting data..";
+        destClient.value()->send( response );
+    }
 
-    qDebug() << "parseTransmit(): transmiting data..";
+    buf_ = buf_.right( buf_.size() - (getPacketLength(buf_) + 9) );
 
-    destClient.value()->send( cmd );
-
-    return true;
+    if( buf_.size() > 0 )
+        onDataReceived();   // If something in buffer - parse again
 }
 //------------------------------------------------------------------------------
-Server* Client::getServer()
+Server* Client::getServer() const
 {
     return static_cast<Server*>( parent() );
+}
+//------------------------------------------------------------------------------
+Client::ClientInfo* Client::getClientInfo() const
+{
+    return static_cast<ClientInfo*>( clientInfo_.get() );
+}
+//------------------------------------------------------------------------------
+Client::AdminInfo* Client::getAdminInfo() const
+{
+    return static_cast<AdminInfo*>( clientInfo_.get() );
+}
+//------------------------------------------------------------------------------
+quint32 Client::getLastSeen() const
+{
+    return time( NULL ) - lastSeen_;
+}
+//------------------------------------------------------------------------------
+void Client::setSeen()
+{
+    lastSeen_ = time( NULL );
+}
+//------------------------------------------------------------------------------
+void Client::disconnectFromHost()
+{
+    qDebug() << "disconnectFromHost()";
+    socket_->disconnectFromHost();
+
+    clientInfo_.reset();
+
+    status_ = ST_DISCONNECTED;
+    getServer()->resendListToAdmins();
+}
+//------------------------------------------------------------------------------
+void Client::sendList( const QByteArray& list )
+{
+    QByteArray cmd;
+    cmd.append( CSPYP1_PROTOCOL_ID );
+    cmd.append( CSPYP1_PROTOCOL_VERSION );
+    cmd.append( CMD1_RLIST );
+    cmd.append( list );
+    this->send( cmd );
 }
 //------------------------------------------------------------------------------

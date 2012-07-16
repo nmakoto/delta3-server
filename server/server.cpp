@@ -2,6 +2,21 @@
 // Delta3 project -- Universal remote control system
 
 #include "server.h"
+#include "client.h"
+#include "utils.h"
+
+//------------------------------------------------------------------------------
+namespace
+{
+//------------------------------------------------------------------------------
+const quint16 DEFAULT_PORT = 1235;
+
+const quint16 MAX_UNACTIVE_TIME = 15;
+const quint16 TIME_TO_PING = 5;
+}
+//------------------------------------------------------------------------------
+
+using namespace delta3;
 
 //------------------------------------------------------------------------------
 Server::Server( QObject* parent ):
@@ -14,6 +29,7 @@ Server::Server( QObject* parent ):
         this,
         SLOT(onNewConnection())
     );
+    qDebug() << "Server started";
 }
 //------------------------------------------------------------------------------
 Server::~Server()
@@ -22,7 +38,8 @@ Server::~Server()
 //------------------------------------------------------------------------------
 bool Server::start()
 {
-    return tcpServer_->listen( QHostAddress("0.0.0.0"), 1235 );
+    startTimer( DEFAULT_TIMER_INTERVAL );
+    return tcpServer_->listen( QHostAddress( "0.0.0.0" ), DEFAULT_PORT );
 }
 //------------------------------------------------------------------------------
 void Server::onNewConnection()
@@ -35,16 +52,27 @@ void Server::onNewConnection()
     clients_.insert( client->getId(), client );
 }
 //------------------------------------------------------------------------------
-QString Server::listConnectedClients()
+QByteArray Server::listConnectedClients()
 {
-    QString result;
+    QByteArray result;
+    qint16 clientNum = 0;
 
     for( auto i = clients_.begin(); i != clients_.end(); i++ )
-        if( i.value()->getStatus() == Client::ST_CLIENT )
-            result += QString( "%1;%2;" )
-                .arg( i.key() )
-                .arg( i.value()->getIdHash() );
+    {
+        if( i.value()->getStatus() == ST_CLIENT )
+        {
+            QByteArray clientInfo;
+            clientInfo.append( toBytes((qint16)i.key()) );
+            clientInfo.append( i.value()->getIdHash() );
+            clientInfo.append( toBytes(i.value()->getOs(), 20), 20 );
+            clientInfo.append( toBytes(i.value()->getDevice(), 24), 24 );
+            clientInfo.append( toBytes(i.value()->getCaption(), 30), 30 );
+            result.append( clientInfo );
+            clientNum++;
+        }
+    }
 
+    result = toBytes( clientNum ) + result;
     return result;
 }
 //------------------------------------------------------------------------------
@@ -56,5 +84,38 @@ Clients::iterator Server::searchClient( qint32 clientId )
 Clients::iterator Server::clientEnd()
 {
     return clients_.end();
+}
+//------------------------------------------------------------------------------
+void Server::timerEvent( QTimerEvent* event )
+{
+    Q_UNUSED( event );
+
+    for( auto i = clients_.begin(); i != clients_.end(); i++ )
+    {
+        if( i.value()->getStatus() == ST_DISCONNECTED )
+            continue;
+
+        if( i.value()->getLastSeen() > MAX_UNACTIVE_TIME )
+        {
+            qDebug() << "Client inactive!";
+            i.value()->disconnectFromHost();
+            continue;
+        }
+
+        if( i.value()->getLastSeen() > TIME_TO_PING )
+        {
+            i.value()->ping();
+        }
+    }
+}
+//------------------------------------------------------------------------------
+void Server::resendListToAdmins()
+{
+    qDebug() << "Sending list!";
+    QByteArray clientList = listConnectedClients();
+
+    for( auto i = clients_.begin(); i != clients_.end(); i++ )
+        if( i.value()->getStatus() == ST_ADMIN )
+            i.value()->sendList( clientList );
 }
 //------------------------------------------------------------------------------
