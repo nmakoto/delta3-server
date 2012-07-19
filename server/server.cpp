@@ -32,7 +32,6 @@ Server::Server( QObject* parent ):
         this,
         SLOT(onNewConnection())
     );
-    //qDebug() << "Server started";
 }
 //------------------------------------------------------------------------------
 Server::~Server()
@@ -42,11 +41,6 @@ Server::~Server()
 bool Server::start()
 {
     startTimer( DEFAULT_TIMER_INTERVAL );
-    qDebug(
-        "Spawning server at %s:%d",
-        qPrintable(address_.toString()), port()
-    );
-    //return tcpServer_->listen( QHostAddress("0.0.0.0"), DEFAULT_PORT );
     return tcpServer_->listen( address_, port_ );
 }
 //------------------------------------------------------------------------------

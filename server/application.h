@@ -20,6 +20,7 @@ public:
     Application( int& argc, char* argv[] );
     ~Application();
     bool start();
+    void printHelp();
 
 public slots:
     void onAboutToQuit();
@@ -27,10 +28,20 @@ public slots:
 private:
     void loadConfig();
     void saveConfig();
+    bool parseCmdLine();
+    bool parseOptions( const QString& arg );
+    bool isOption( const QString& arg, const QString& option );
+    bool isOption(
+        const QString& arg,
+        const QString& option1,
+        const QString& option2
+    );
+    bool parseOptionsWithParam( const QString& arg, const QString& param );
 
 private:
     Server* server_;
     Config* config_;
+    bool forceQuit_;
 };
 //------------------------------------------------------------------------------
 }
