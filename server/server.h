@@ -34,6 +34,13 @@ public:
     Clients::iterator clientEnd();
     void resendListToAdmins();
 
+    void setAddress( const QHostAddress& address );
+    void setAddress( const QString& address );
+    void setPort( quint16 port );
+
+    const QHostAddress& address() const;
+    quint16 port() const;
+
 private slots:
     void onNewConnection();
 
@@ -43,6 +50,8 @@ private:
 private:
     QTcpServer* tcpServer_;
     Clients clients_;
+    QHostAddress address_;
+    quint16 port_;
 };
 //------------------------------------------------------------------------------
 }

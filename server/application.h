@@ -11,6 +11,7 @@ namespace delta3
 {
 //------------------------------------------------------------------------------
 class Server;
+class Config;
 //------------------------------------------------------------------------------
 class Application: public QCoreApplication
 {
@@ -20,8 +21,16 @@ public:
     ~Application();
     bool start();
 
+public slots:
+    void onAboutToQuit();
+
+private:
+    void loadConfig();
+    void saveConfig();
+
 private:
     Server* server_;
+    Config* config_;
 };
 //------------------------------------------------------------------------------
 }

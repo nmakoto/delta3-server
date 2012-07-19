@@ -9,7 +9,8 @@
 namespace
 {
 //------------------------------------------------------------------------------
-const quint16 DEFAULT_PORT = 1235;
+const QHostAddress& DEFAULT_HOST_ADDRESS = QHostAddress::Any;
+const quint16 DEFAULT_HOST_PORT = 1235;
 
 const quint16 MAX_UNACTIVE_TIME = 15;
 const quint16 TIME_TO_PING = 5;
@@ -21,7 +22,9 @@ using namespace delta3;
 //------------------------------------------------------------------------------
 Server::Server( QObject* parent ):
     QObject( parent ),
-    tcpServer_( new QTcpServer(this) )
+    tcpServer_( new QTcpServer(this) ),
+    address_( DEFAULT_HOST_ADDRESS ),
+    port_( DEFAULT_HOST_PORT )
 {
     connect(
         tcpServer_,
@@ -29,7 +32,7 @@ Server::Server( QObject* parent ):
         this,
         SLOT(onNewConnection())
     );
-    qDebug() << "Server started";
+    //qDebug() << "Server started";
 }
 //------------------------------------------------------------------------------
 Server::~Server()
@@ -39,7 +42,12 @@ Server::~Server()
 bool Server::start()
 {
     startTimer( DEFAULT_TIMER_INTERVAL );
-    return tcpServer_->listen( QHostAddress( "0.0.0.0" ), DEFAULT_PORT );
+    qDebug(
+        "Spawning server at %s:%d",
+        qPrintable(address_.toString()), port()
+    );
+    //return tcpServer_->listen( QHostAddress("0.0.0.0"), DEFAULT_PORT );
+    return tcpServer_->listen( address_, port_ );
 }
 //------------------------------------------------------------------------------
 void Server::onNewConnection()
@@ -117,5 +125,32 @@ void Server::resendListToAdmins()
     for( auto i = clients_.begin(); i != clients_.end(); i++ )
         if( i.value()->getStatus() == ST_ADMIN )
             i.value()->sendList( clientList );
+}
+//------------------------------------------------------------------------------
+void Server::setAddress( const QHostAddress& address )
+{
+    address_ = address;
+}
+//------------------------------------------------------------------------------
+void Server::setAddress( const QString& address )
+{
+    address_ = QHostAddress( address );
+    if( address_ == QHostAddress::Null )
+        address_ = DEFAULT_HOST_ADDRESS;
+}
+//------------------------------------------------------------------------------
+void Server::setPort( quint16 port )
+{
+    port_ = port;
+}
+//------------------------------------------------------------------------------
+const QHostAddress& Server::address() const
+{
+    return address_;
+}
+//------------------------------------------------------------------------------
+quint16 Server::port() const
+{
+    return port_;
 }
 //------------------------------------------------------------------------------
