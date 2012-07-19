@@ -31,10 +31,6 @@ HEADERS += \
     netextract.h \
     config.h
 
-OTHER_FILES += \
-    common.pri \
-    options.pri
-
 GIT_ROOT = $${PWD}/../
 include( common.pri )
 
