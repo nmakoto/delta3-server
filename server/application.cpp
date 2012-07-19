@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <QStringList>
+#include <options.h>
 #include "config.h"
 #include "server.h"
 #include "application.h"
@@ -70,10 +71,10 @@ void Application::saveConfig()
 void Application::printHelp()
 {
     std::cout
-        << "Delta3 project -- Universal remote control system [server]\n"
+        << PROJECT_NAME " -- " << PROJECT_DESCRIPTION << "\n"
         << "Usage:\n"
         << "    -h, --help           -- show this help\n"
-        << "    -a, --addr [ADDRESS] -- server address to spawn to"
+        << "    -a, --addr [ADDRESS] -- server address to spawn to "
         << "(default '127.0.0.1')\n"
         << "    -p, --port [PORT]    -- server port (default 1235)\n"
     ;

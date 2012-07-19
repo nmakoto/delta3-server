@@ -9,7 +9,7 @@
 namespace
 {
 //------------------------------------------------------------------------------
-const QHostAddress& DEFAULT_HOST_ADDRESS = QHostAddress::Any;
+const QHostAddress& DEFAULT_HOST_ADDRESS = QHostAddress::LocalHost;
 const quint16 DEFAULT_HOST_PORT = 1235;
 
 const quint16 MAX_UNACTIVE_TIME = 15;

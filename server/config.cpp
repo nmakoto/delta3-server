@@ -5,10 +5,10 @@
 #include <QFile>
 #include <QSettings>
 #include <QVariant>
+#include <options.h>
 #include "config.h"
 
 const QString DEFAULT_CONFIG_NAME = "server";
-const QString DEV_TEAM = "bakwc";
 
 using namespace delta3;
 
