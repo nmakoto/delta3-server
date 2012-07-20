@@ -9,6 +9,7 @@
 #include <QMap>
 #include <QTimerEvent>
 #include "defines.h"
+#include "clientinfostorage.h"
 
 //------------------------------------------------------------------------------
 namespace delta3
@@ -33,6 +34,7 @@ public:
     Clients::iterator searchClient( qint32 clientId );
     Clients::iterator clientEnd();
     void resendListToAdmins();
+    void setClientCaption( qint16 clientId, const QString& caption );
 
     void setAddress( const QHostAddress& address );
     void setAddress( const QString& address );
@@ -50,6 +52,7 @@ private:
 private:
     QTcpServer* tcpServer_;
     Clients clients_;
+    ClientInfoStorage* storage_;
     QHostAddress address_;
     quint16 port_;
 };

@@ -10,9 +10,10 @@
 #include <QByteArray>
 #include <QObject>
 #include <QDebug>
-#include <QRegExp>
 #include <ctime>
 #include "defines.h"
+
+class ClientInfoStorage;
 
 //------------------------------------------------------------------------------
 namespace delta3
@@ -24,7 +25,11 @@ class Client: public QObject
 {
     Q_OBJECT
 public:
-    Client( QTcpSocket* socket, QObject* parent = 0 );
+    Client(
+        QTcpSocket* socket,
+        ClientInfoStorage* storage,
+        QObject* parent = 0
+    );
 
     void send( const QByteArray& cmd ) const;
     void ping() const;
@@ -35,7 +40,9 @@ public:
     QString getCaption() const;
     ClientStatus getStatus() const;
     quint32 getLastSeen() const;
+    qint32 getIp() const;
     void setSeen();
+    void setCaption( const QString& caption );
     void disconnectFromHost();
     void sendList( const QByteArray& list );
 
@@ -88,6 +95,7 @@ private:
 private:
     quint32 lastSeen_;   //timestamp
     QTcpSocket* socket_;
+    ClientInfoStorage* storage_;
     std::unique_ptr<BasicInfo> clientInfo_;
     ClientStatus status_;
     QByteArray buf_;

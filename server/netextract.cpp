@@ -62,5 +62,10 @@ QByteArray getPacketData( const QByteArray& buffer )
     return buffer.mid( 9, getPacketLength(buffer) );
 }
 //------------------------------------------------------------------------------
+QString getClientCaption( const QByteArray& buffer )
+{
+    return buffer.mid( 5, 30 );
+}
+//------------------------------------------------------------------------------
 }
 //------------------------------------------------------------------------------

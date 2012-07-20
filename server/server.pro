@@ -20,6 +20,7 @@ SOURCES += main.cpp \
     application.cpp \
     client.cpp \
     netextract.cpp \
+    clientinfostorage.cpp \
     config.cpp
 
 HEADERS += \
@@ -29,6 +30,7 @@ HEADERS += \
     defines.h \
     utils.h \
     netextract.h \
+    clientinfostorage.h \
     config.h
 
 GIT_ROOT = $${PWD}/../

@@ -23,6 +23,7 @@ using namespace delta3;
 Server::Server( QObject* parent ):
     QObject( parent ),
     tcpServer_( new QTcpServer(this) ),
+    storage_( new ClientInfoStorage(this) ),
     address_( DEFAULT_HOST_ADDRESS ),
     port_( DEFAULT_HOST_PORT )
 {
@@ -49,6 +50,7 @@ void Server::onNewConnection()
     qDebug() << "Server::onNewConnection(): new anonymous user connected";
     Client* client = new Client(
         tcpServer_->nextPendingConnection(),
+        storage_,
         this
     );
     clients_.insert( client->getId(), client );
@@ -67,7 +69,8 @@ QByteArray Server::listConnectedClients()
             clientInfo.append( toBytes((qint16)i.key()) );
             clientInfo.append( i.value()->getIdHash() );
             clientInfo.append( toBytes(i.value()->getOs(), 20), 20 );
-            clientInfo.append( toBytes(i.value()->getDevice(), 24), 24 );
+            clientInfo.append( toBytes(i.value()->getDevice(), 20), 20 );
+            clientInfo.append( toBytes(i.value()->getIp()), 4 );
             clientInfo.append( toBytes(i.value()->getCaption(), 30), 30 );
             result.append( clientInfo );
             clientNum++;
@@ -119,6 +122,17 @@ void Server::resendListToAdmins()
     for( auto i = clients_.begin(); i != clients_.end(); i++ )
         if( i.value()->getStatus() == ST_ADMIN )
             i.value()->sendList( clientList );
+}
+//------------------------------------------------------------------------------
+void Server::setClientCaption( qint16 clientId, const QString& caption )
+{
+    auto i = clients_.find( clientId );
+    if( i == clients_.end() )
+        return;
+
+    i.value()->setCaption( caption );
+    storage_->setCaption( i.value()->getIdHash(), caption );
+    i.value()->getIdHash();
 }
 //------------------------------------------------------------------------------
 void Server::setAddress( const QHostAddress& address )
