@@ -1,6 +1,13 @@
 // netextract.h
 // Delta3 project -- Universal remote control system
 
+/**
+ * Тут находятся функции для извлечения необходимых данных
+ * из пришедшего пакета. Например, getClientOs - принимает
+ * на вход массив байт QByteArray (пришедшая по сети команда)
+ * - и возвращает операционную систему в виде строки QString.
+ */
+
 #pragma once
 
 #include <QtGlobal>

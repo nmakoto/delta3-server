@@ -18,7 +18,7 @@ const Client::CommandTableType Client::CommandTable[] =
     { CMD1_AUTH, &Client::parseClientAuth },
     { CMD1_LIST, &Client::parseList },
     { CMD1_TRANSMIT, &Client::parseTransmit },
-    { CMD1_PING, &Client::parsePing },
+    { CMD1_PING, &Client::sendPong },
     { CMD1_DISCONNECT, &Client::parseDisconnect },
     { CMD1_SETINFO, &Client::parseSetInfo },
 };
@@ -227,7 +227,7 @@ void Client::parseDisconnect()
         onDataReceived();   // If something in buffer - parse again
 }
 //------------------------------------------------------------------------------
-void Client::parsePing()
+void Client::sendPong()
 {
     qDebug() << "Ping received!";
 

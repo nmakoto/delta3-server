@@ -100,6 +100,9 @@ void Server::timerEvent( QTimerEvent* event )
         if( i.value()->getStatus() == ST_DISCONNECTED )
             continue;
 
+        // TODO: remove disconnected clients from clients_
+        // to prevent memory leak
+
         if( i.value()->getLastSeen() > MAX_UNACTIVE_TIME )
         {
             qDebug() << "Client inactive!";
@@ -111,6 +114,7 @@ void Server::timerEvent( QTimerEvent* event )
         {
             i.value()->ping();
         }
+        storage_->save();
     }
 }
 //------------------------------------------------------------------------------
